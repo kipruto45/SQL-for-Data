@@ -1,0 +1,116 @@
+name: Scheduled Monitoring
+
+on:
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+jobs:
+  monitoring-checks:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: sql_data_engineering
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d sql_data_engineering"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Wait for PostgreSQL readiness
+        env:
+          PGPASSWORD: postgres
+        run: |
+          for i in {1..30}; do
+            if pg_isready -h 127.0.0.1 -p 5432 -U postgres -d sql_data_engineering; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "PostgreSQL service did not become ready in time."
+          exit 1
+
+      - name: Prepare environment
+        run: |
+          cat > .env <<'EOF'
+          DB_HOST=127.0.0.1
+          DB_PORT=5432
+          DB_NAME=sql_data_engineering
+          DB_USER=postgres
+          DB_PASSWORD=postgres
+          DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/sql_data_engineering
+          EOF
+
+      - name: Run ETL baseline
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/sql_data_engineering
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/schema.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/tables.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/constraints.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f database/indexes.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f etl/extract.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f etl/transform.sql
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f etl/load.sql
+
+      - name: Run monitoring checks
+        id: monitoring
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/sql_data_engineering
+        run: |
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f monitoring/row_count_checks.sql | tee monitoring_row_count.log
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f monitoring/anomaly_detection.sql | tee monitoring_anomaly.log
+
+          ANOMALY_COUNT="$(psql "$DATABASE_URL" -tA <<'SQL'
+          WITH daily_revenue AS (
+              SELECT
+                  o.order_date AS day,
+                  SUM(CASE WHEN o.status = 'PAID' AND t.status = 'SUCCESS' THEN t.amount ELSE 0 END) AS revenue
+              FROM oltp.orders o
+              LEFT JOIN oltp.transactions t ON t.order_id = o.order_id
+              GROUP BY o.order_date
+          ), stats AS (
+              SELECT
+                  day,
+                  revenue,
+                  AVG(revenue) OVER () AS avg_revenue,
+                  STDDEV_SAMP(revenue) OVER () AS std_revenue
+              FROM daily_revenue
+          )
+          SELECT COUNT(*)
+          FROM stats
+          WHERE ABS((revenue - avg_revenue) / NULLIF(std_revenue, 0)) >= 2.0;
+          SQL
+          )"
+          ANOMALY_COUNT="$(echo "$ANOMALY_COUNT" | tr -d '[:space:]')"
+
+          echo "anomaly_count=${ANOMALY_COUNT}" >> "$GITHUB_OUTPUT"
+          echo "Anomaly count: ${ANOMALY_COUNT}"
+
+          if [ "${ANOMALY_COUNT}" -gt 0 ]; then
+            echo "::warning::Detected ${ANOMALY_COUNT} potential revenue anomaly row(s). Review monitoring_anomaly.log artifact."
+          fi
+
+      - name: Upload monitoring logs
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitoring-logs
+          path: |
+            monitoring_row_count.log
+            monitoring_anomaly.log

@@ -28,6 +28,8 @@ sql-data-engineering-project/
 
 - GitHub Actions workflow: `.github/workflows/ci.yml`
 - Runs the full pipeline (`./run_all.sh`) on pushes and pull requests to `main`.
+- Scheduled monitoring workflow: `.github/workflows/monitoring_schedule.yml`
+- Runs weekly and on manual trigger; publishes monitoring logs as workflow artifacts.
 
 ## Quick Start
 
