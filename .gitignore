@@ -1,0 +1,16 @@
+# Environment
+.env
+.venv/
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Build / logs
+*.log

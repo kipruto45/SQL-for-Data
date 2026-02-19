@@ -1,0 +1,51 @@
+digraph data_model {
+  rankdir=LR;
+  graph [fontname="Helvetica", fontsize=11, bgcolor="white", pad="0.2"];
+  node [shape=record, fontname="Helvetica", fontsize=10, color="#2f3e46", style="filled", fillcolor="#f8f9fa"];
+  edge [fontname="Helvetica", fontsize=9, color="#495057", arrowsize=0.8];
+
+  customers [
+    label="{oltp.customers|PK customer_id:int\lfirst_name:varchar\llast_name:varchar\lemail:varchar\lphone:varchar\lcity:varchar\lcountry:char(2)\lsignup_date:date\lupdated_at:timestamptz\l}",
+    fillcolor="#d1e7dd"
+  ];
+
+  orders [
+    label="{oltp.orders|PK order_id:bigint\lFK customer_id:int\lorder_date:date\lstatus:varchar\ltotal_amount:numeric\lcurrency:char(3)\lupdated_at:timestamptz\l}",
+    fillcolor="#d1e7dd"
+  ];
+
+  transactions [
+    label="{oltp.transactions|PK transaction_id:bigint\lFK order_id:bigint\ltransaction_date:timestamptz\lpayment_method:varchar\lamount:numeric\lstatus:varchar\lrisk_score:numeric\lupdated_at:timestamptz\l}",
+    fillcolor="#d1e7dd"
+  ];
+
+  dim_customer [
+    label="{warehouse.dim_customer|PK customer_sk:bigserial\lBK customer_id:int\lfirst_name\llast_name\lemail\lcity\lcountry\lsignup_date\lvalid_from:date\lvalid_to:date\lis_current:boolean\lhash_diff:text\l}",
+    fillcolor="#dbeafe"
+  ];
+
+  dim_date [
+    label="{warehouse.dim_date|PK date_sk:int\lfull_date:date\lday_number\lmonth_number\lmonth_name\lquarter_number\lyear_number\lis_weekend:boolean\l}",
+    fillcolor="#dbeafe"
+  ];
+
+  dim_payment [
+    label="{warehouse.dim_payment_method|PK payment_method_sk:serial\lpayment_method:varchar\l}",
+    fillcolor="#dbeafe"
+  ];
+
+  fact_sales [
+    label="{warehouse.fact_sales|PK sales_sk:bigserial\lUK transaction_id:bigint\lorder_id:bigint\lFK customer_sk:bigint\lFK date_sk:int\lFK payment_method_sk:int\lorder_status:varchar\ltransaction_status:varchar\lrevenue_amount:numeric\lrisk_score:numeric\lload_ts:timestamptz\l}",
+    fillcolor="#cfe2ff"
+  ];
+
+  customers -> orders [label="1:M"];
+  orders -> transactions [label="1:M"];
+
+  dim_customer -> fact_sales [label="1:M"];
+  dim_date -> fact_sales [label="1:M"];
+  dim_payment -> fact_sales [label="1:M"];
+
+  orders -> fact_sales [label="order_id carried", style=dashed];
+  transactions -> fact_sales [label="transaction grain", style=dashed];
+}

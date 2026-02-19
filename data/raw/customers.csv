@@ -1,0 +1,9 @@
+customer_id,first_name,last_name,email,phone,city,country,signup_date,updated_at
+1,Alice,Johnson,alice.johnson@example.com,+1-555-1001,Austin,US,2024-01-15,2026-01-01T10:00:00Z
+2,Bob,Smith,bob.smith@example.com,+1-555-1002,Seattle,US,2024-02-11,2026-01-02T09:30:00Z
+2,Bob,Smith,bob.smith@example.com,+1-555-1002,Portland,US,2024-02-11,2026-01-12T09:30:00Z
+3,Carol,Nguyen,carol.nguyen@example.com,+1-555-1003,Denver,US,2024-03-05,2026-01-03T11:45:00Z
+4,David,Lopez,david.lopez@example.com,+1-555-1004,Miami,US,2024-05-20,2026-01-04T14:15:00Z
+5,Eva,Brown,eva.brown@example.com,+1-555-1005,Boston,US,2024-07-09,2026-01-05T08:10:00Z
+6,Frank,Kim,frank.kim@example.com,+1-555-1006,Chicago,US,2025-01-17,2026-01-06T12:00:00Z
+7,Gina,Hall,gina.hall_at_example.com,+1-555-1007,Phoenix,US,2025-03-20,2026-01-07T07:50:00Z

@@ -1,0 +1,5 @@
+psycopg2-binary==2.9.10
+SQLAlchemy==2.0.38
+pandas==2.2.3
+python-dotenv==1.0.1
+sqlfluff==3.3.1

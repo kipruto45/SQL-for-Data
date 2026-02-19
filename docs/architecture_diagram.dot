@@ -1,0 +1,29 @@
+digraph architecture {
+  rankdir=LR;
+  graph [fontname="Helvetica", fontsize=11, bgcolor="white", pad="0.2"];
+  node [shape=box, style="rounded,filled", fontname="Helvetica", fontsize=10, color="#2f3e46", fillcolor="#f8f9fa"];
+  edge [fontname="Helvetica", fontsize=9, color="#495057", arrowsize=0.8];
+
+  raw [label="Raw Data\nCSV Files\n(data/raw)", fillcolor="#e3f2fd"];
+  staging [label="Staging Schema\nstaging.*_raw", fillcolor="#fff3cd"];
+  transform [label="Transform Views\nstaging.*_clean", fillcolor="#fff3cd"];
+  oltp [label="Core OLTP\noltp.customers\noltp.orders\noltp.transactions", fillcolor="#d1e7dd"];
+  watermark [label="Metadata\nmetadata.etl_watermark", fillcolor="#f8d7da"];
+  warehouse [label="Warehouse\ndim_* + fact_sales", fillcolor="#dbeafe"];
+  analytics [label="Analytics\nRevenue / Segmentation\nFraud / Retention", fillcolor="#ede9fe"];
+  quality [label="Data Quality\nNull / Duplicate / RI\nValidation", fillcolor="#ffe5d9"];
+  monitoring [label="Monitoring\nRow Counts\nAnomaly Detection", fillcolor="#ffe5d9"];
+  tests [label="SQL Tests\nData Load / SCD / Quality", fillcolor="#fde2e4"];
+
+  raw -> staging [label="extract.sql"];
+  staging -> transform [label="transform.sql"];
+  transform -> oltp [label="load.sql"];
+  transform -> oltp [label="incremental_load.sql", color="#b56576"];
+  watermark -> oltp [label="watermark-driven loads", style=dashed];
+  oltp -> warehouse [label="star_schema.sql + scd_type2.sql"];
+  warehouse -> analytics [label="KPI queries"];
+  oltp -> quality [label="checks"];
+  oltp -> monitoring [label="metrics"];
+  oltp -> tests [label="assertions"];
+  warehouse -> tests [label="SCD assertions"];
+}
