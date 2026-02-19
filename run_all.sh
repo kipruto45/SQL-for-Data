@@ -4,23 +4,45 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT_DIR"
 
-if [[ ! -f ".env" ]]; then
-  echo "Missing .env in $ROOT_DIR"
-  exit 1
-fi
+load_env_file() {
+  local env_file="$1"
+  while IFS= read -r line; do
+    [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ "$line" != *=* ]] && continue
 
-set -a
-source .env
-set +a
+    local key="${line%%=*}"
+    local value="${line#*=}"
+    key="${key//[[:space:]]/}"
+
+    if [[ -z "$key" ]]; then
+      continue
+    fi
+
+    # Keep externally provided values (useful for Docker/CI overrides).
+    if [[ -z "${!key+x}" ]]; then
+      export "$key=$value"
+    fi
+  done < "$env_file"
+}
+
+if [[ -f ".env" ]]; then
+  load_env_file ".env"
+else
+  echo "No .env found. Using environment variables only."
+fi
 
 if [[ -z "${DATABASE_URL:-}" ]]; then
-  echo "DATABASE_URL is not set in .env"
-  exit 1
+  if [[ -n "${DB_HOST:-}" && -n "${DB_PORT:-}" && -n "${DB_NAME:-}" && -n "${DB_USER:-}" && -n "${DB_PASSWORD:-}" ]]; then
+    export DATABASE_URL="postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}"
+  else
+    echo "DATABASE_URL is not set. Provide it directly or via DB_* variables."
+    exit 1
+  fi
 fi
 
-export PGPASSWORD="${DB_PASSWORD:-}"
+export PGPASSWORD="${DB_PASSWORD:-${PGPASSWORD:-}}"
 
-ADMIN_URL="postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-}@${DB_HOST:-localhost}:${DB_PORT:-5432}/postgres"
+ADMIN_URL="postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@${DB_HOST:-localhost}:${DB_PORT:-5432}/postgres"
 TARGET_DB="${DB_NAME:-sql_data_engineering}"
 
 echo "Checking target database: $TARGET_DB"
@@ -69,5 +91,6 @@ run_sql "performance/optimization_examples.sql"
 run_sql "tests/test_data_load.sql"
 run_sql "tests/test_scd_logic.sql"
 run_sql "tests/test_quality_checks.sql"
+run_sql "tests/test_customer_segmentation.sql"
 
 echo "Pipeline completed successfully."

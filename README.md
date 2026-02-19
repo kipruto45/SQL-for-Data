@@ -38,6 +38,13 @@ chmod +x run_all.sh
 ./run_all.sh
 ```
 
+Run with Docker (PostgreSQL + pipeline):
+
+```bash
+docker compose up -d postgres
+docker compose --profile run run --rm pipeline
+```
+
 Manual execution:
 
 1. Create database (example):
@@ -79,6 +86,7 @@ psql "$DATABASE_URL" -f analytics/revenue_analysis.sql
 psql "$DATABASE_URL" -f tests/test_data_load.sql
 psql "$DATABASE_URL" -f tests/test_scd_logic.sql
 psql "$DATABASE_URL" -f tests/test_quality_checks.sql
+psql "$DATABASE_URL" -f tests/test_customer_segmentation.sql
 ```
 
 ## Pipeline Flow

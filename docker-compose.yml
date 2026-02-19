@@ -1,0 +1,39 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: sql_data_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: sql_data_engineering
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "${PG_HOST_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d sql_data_engineering"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  pipeline:
+    image: postgres:16
+    depends_on:
+      postgres:
+        condition: service_healthy
+    working_dir: /workspace
+    volumes:
+      - ./:/workspace
+    environment:
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: sql_data_engineering
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/sql_data_engineering
+    command: ["bash", "-lc", "chmod +x ./run_all.sh && ./run_all.sh"]
+    profiles: ["run"]
+
+volumes:
+  postgres_data:
