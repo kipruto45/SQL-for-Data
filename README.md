@@ -24,6 +24,11 @@ sql-data-engineering-project/
 - SQL (psql-compatible scripts)
 - Optional Python tools (linting/automation)
 
+## CI
+
+- GitHub Actions workflow: `.github/workflows/ci.yml`
+- Runs the full pipeline (`./run_all.sh`) on pushes and pull requests to `main`.
+
 ## Quick Start
 
 One command end-to-end (recommended):

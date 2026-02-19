@@ -1,0 +1,64 @@
+name: SQL Pipeline CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  run-sql-pipeline:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: sql_data_engineering
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d sql_data_engineering"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Wait for PostgreSQL readiness
+        env:
+          PGPASSWORD: postgres
+        run: |
+          for i in {1..30}; do
+            if pg_isready -h 127.0.0.1 -p 5432 -U postgres -d sql_data_engineering; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "PostgreSQL service did not become ready in time."
+          exit 1
+
+      - name: Create CI .env
+        run: |
+          cat > .env <<'EOF'
+          DB_HOST=127.0.0.1
+          DB_PORT=5432
+          DB_NAME=sql_data_engineering
+          DB_USER=postgres
+          DB_PASSWORD=postgres
+          DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/sql_data_engineering
+          EOF
+
+      - name: Run full SQL pipeline
+        run: |
+          chmod +x run_all.sh
+          ./run_all.sh
